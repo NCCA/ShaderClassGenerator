@@ -41,5 +41,27 @@ class TestShader : public AbstractShaderProgram
 		void setlight_position(GLfloat _1, GLfloat _2, GLfloat _3, GLfloat _4); const
 	private :
 		TestShader();
+		static GLint s_light_quadraticAttenuation;
+		static GLint s_light_linearAttenuation;
+		static GLint s_light_spotCosInnerCutoff;
+		static GLint s_light_specular;
+		static GLint s_light_diffuse;
+		static GLint s_light_ambient;
+		static GLint s_MVP;
+		static GLint s_light_constantAttenuation;
+		static GLint s_light_spotExponent;
+		static GLint s_Normalize;
+		static GLint s_Colour;
+		static GLint s_light_direction;
+		static GLint s_material_specular;
+		static GLint s_normalMatrix;
+		static GLint s_MV;
+		static GLint s_material_shininess;
+		static GLint s_M;
+		static GLint s_material_diffuse;
+		static GLint s_viewerPos;
+		static GLint s_light_spotCosCutoff;
+		static GLint s_material_ambient;
+		static GLint s_light_position;
 };
 #endif

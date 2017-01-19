@@ -42,6 +42,8 @@ void ShaderProcessor::generateStringsFromUniforms()
   for(auto p : m_registeredUniforms)
   {
     defineFunctionString(p.second);
+    defineFunctionBodyString(p.second);
+    defineAttributeString(p.second);
   }
 }
 
@@ -55,7 +57,38 @@ void ShaderProcessor::defineFunctionString(const uniformData &_p)
   writeParams(_p.type,func);
   func+="); const";
   m_classPublicData.push_back(func);
+
+  std::string staticDecl="GLint "+m_shaderProgramName+"::s_";
+  staticDecl+=regex_replace(_p.name, std::regex("[.]+"), "_");
+  staticDecl+="=0;";
+  m_classStaticAttributesCPP.push_back(staticDecl);
 }
+
+void ShaderProcessor::defineFunctionBodyString(const uniformData &_p)
+{
+  std::string func("void "+m_shaderProgramName+"::set");
+  func+=regex_replace(_p.name, std::regex("[.]+"), "_");
+  func+='(';
+  writeParams(_p.type,func);
+  func+=") const\n";
+  func+="{\n";
+
+  func+="}\n";
+  m_classShaderFunctionsCPP.push_back(func);
+
+  }
+
+void ShaderProcessor::defineAttributeString(const uniformData &_p)
+{
+  std::string attrib("static GLint s_");
+
+
+  attrib+=regex_replace(_p.name, std::regex("[.]+"), "_");
+  attrib+=';';
+  m_classPrivateData.push_back(attrib);
+
+}
+
 
 void ShaderProcessor::writeParams( GLenum _p, std::string &io_func)
 {
@@ -290,13 +323,12 @@ void ShaderProcessor::exportClass(const std::string &_path, bool _abstract)
   }
 
   writeHeader(_path);
+  writeCPP(_path);
 }
 
 
 void ShaderProcessor::writeHeader(const std::string &_path)
 {
-  std::cerr<<"m_shaderProgname is "<<m_shaderProgramName<<'\n';
-  std::cerr<<"File is "<<_path+'/'+m_shaderProgramName+".h"<<'\n';
   std::ofstream fileOut(_path+'/'+m_shaderProgramName+".h" );
   if (!fileOut.is_open())
   {
@@ -320,6 +352,10 @@ void ShaderProcessor::writeHeader(const std::string &_path)
   writePublicMethods(fileOut);
   fileOut<<"\tprivate :\n";
   fileOut<<"\t\t"<<m_shaderProgramName<<"();\n";
+  for(auto p : m_classPrivateData )
+  {
+    fileOut<<"\t\t"<<p<<'\n';
+  }
   // now write pre-constructed attributes
   // writePrivateAttributes(fileout);
   // end class definition
@@ -337,4 +373,78 @@ void ShaderProcessor::writePublicMethods(std::ofstream &_fileOut)
 }
 
 
+
+
+void ShaderProcessor::writeCPP(const std::string &_path)
+{
+  std::ofstream fileOut(_path+'/'+m_shaderProgramName+".cpp" );
+  if (!fileOut.is_open())
+  {
+    std::cerr <<"Could not open File : "<<_path+'/'+m_shaderProgramName+".h"<<" for writing \n";
+    exit(EXIT_FAILURE);
+  }
+  fileOut<<"#include <"+m_shaderProgramName+".h>\n";
+
+  for(auto p : m_classStaticAttributesCPP)
+    fileOut<<p<<'\n';
+  writeCreationMethods(fileOut);
+  writeShaderStrings(fileOut);
+  for(auto p : m_classShaderFunctionsCPP)
+    fileOut<<p<<'\n';
+
+  fileOut.close();
+}
+
+void ShaderProcessor::writeShaderStrings(std::ofstream &fileOut)
+{
+
+auto writeString=[&](const std::string &_name, const std::string &_path)
+{
+  std::ifstream shaderSource(_path.c_str());
+  if (!shaderSource.is_open())
+  {
+    std::cerr<<"File not found "<<_path.c_str()<<'\n';
+    exit(EXIT_FAILURE);
+  }
+  // now read in the data
+  std::string source =  std::string((std::istreambuf_iterator<char>(shaderSource)), std::istreambuf_iterator<char>());
+  shaderSource.close();
+  fileOut<<"constexpr const char * s_"+_name;
+  fileOut<<"=\nR\"(\n";
+  fileOut<<source;
+  fileOut<<")\";\n";
+
+};
+  writeString("vertexShader",m_shaders[static_cast<size_t>(ShaderType::Vertex)].sourcePath);
+  writeString("fragmentShader",m_shaders[static_cast<size_t>(ShaderType::Fragment)].sourcePath);
+}
+
+void ShaderProcessor::writeCreationMethods(std::ofstream &fileOut)
+{
+  fileOut<<"std::unique_ptr<"+m_shaderProgramName+"> "+m_shaderProgramName+"::getShader()\n";
+  fileOut<<"{\n";
+  fileOut<<"\tstatic std::unique_ptr<"+m_shaderProgramName+"> shader;\n";
+  fileOut<<"\tif(shader ==nullptr)\n";
+  fileOut<<"\t{\n";
+  fileOut<<"\t\t shader.reset( new "+m_shaderProgramName+");\n";
+  fileOut<<"\t}\n";
+  fileOut<<"\treturn std::move(shader);\n";
+  fileOut<<"}\n";
+
+  // this is the same for all shaders just needs the class name
+
+  fileOut<<m_shaderProgramName+"::"+m_shaderProgramName+"() : AbstractShaderProgram ()";
+  fileOut<<R"(
+{
+  static bool initalised=false;
+
+  if(!initalised )
+  {
+    createShaderProgram();
+    initalised=true;
+  }
+}
+)";
+
+}
 

@@ -39,10 +39,17 @@ class ShaderProcessor
 
 
     void writeHeader(const std::string &_path);
+    void writeCPP(const std::string &_path);
     void writePublicMethods(std::ofstream &fileOut);
     void writeImplementation(const std::string &_path);
+    void writeShaderStrings(std::ofstream &fileOut);
+    void writeCreationMethods(std::ofstream &fileOut);
+
     void generateStringsFromUniforms();
     void defineFunctionString(const uniformData &_p);
+    void defineFunctionBodyString(const uniformData &_p);
+
+    void defineAttributeString(const uniformData &_p);
     void writeParams(GLenum _type,std::string &io_func);
     std::array<Shader,6> m_shaders;
     std::unordered_map <std::string, uniformData> m_registeredUniforms;
@@ -51,7 +58,8 @@ class ShaderProcessor
     std::string m_shaderProgramName;
     std::vector<std::string> m_classPublicData;
     std::vector<std::string> m_classPrivateData;
-    std::vector<std::string> m_classImplementation;
+    std::vector<std::string> m_classStaticAttributesCPP;
+    std::vector<std::string> m_classShaderFunctionsCPP;
 
 
 };
